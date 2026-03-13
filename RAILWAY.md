@@ -44,6 +44,8 @@
 
 В Supabase Dashboard → Authentication → URL Configuration добавьте ваш Railway URL в **Redirect URLs**.
 
+> **Редирект на 0.0.0.0:8080 или localhost:** Код теперь использует `NEXT_PUBLIC_SITE_URL` вместо `request.url.origin`. Убедитесь, что переменная задана в Railway и пересоберите деплой.
+
 ### 4. SUPABASE_DATABASE_URL — важно
 
 - Используйте **Connection Pooler** (Supabase Dashboard → Database → Connection string)

@@ -3,9 +3,12 @@ import { Routes } from '@/utils/constants';
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 import { api } from '~/trpc/server';
+import { env } from '@/env';
 
 export async function GET(request: Request) {
-    const { searchParams, origin } = new URL(request.url);
+    const { searchParams } = new URL(request.url);
+    // Используем NEXT_PUBLIC_SITE_URL — request.url.origin на Railway может быть 0.0.0.0:8080
+    const origin = env.NEXT_PUBLIC_SITE_URL;
     const code = searchParams.get('code');
 
     if (code) {
@@ -34,7 +37,6 @@ export async function GET(request: Request) {
                 }
             });
 
-            // Always use the request origin to prevent open redirect via X-Forwarded-Host header manipulation
             return NextResponse.redirect(`${origin}${Routes.AUTH_REDIRECT}`);
         }
         console.error(`Error exchanging code for session: ${error}`);
