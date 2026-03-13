@@ -1,62 +1,47 @@
-'use server';
-
-import { env } from '@/env';
+import { trackEvent } from '@/utils/analytics/server';
 import { Routes } from '@/utils/constants';
 import { createClient } from '@/utils/supabase/server';
-import { SEED_USER } from '@onlook/db';
-import { SignInMethod } from '@onlook/models';
-import { redirect } from 'next/navigation';
+import { NextResponse } from 'next/server';
+import { api } from '~/trpc/server';
+import { env } from '@/env';
 
-export async function login(provider: SignInMethod.GITHUB | SignInMethod.GOOGLE) {
-    const supabase = await createClient();
-    // Всегда используем NEXT_PUBLIC_SITE_URL — headers().get('origin') на Railway может вернуть 0.0.0.0:8080
+export async function GET(request: Request) {
+    const { searchParams } = new URL(request.url);
+    // Используем NEXT_PUBLIC_SITE_URL — request.url.origin на Railway может быть 0.0.0.0:8080
     const origin = env.NEXT_PUBLIC_SITE_URL;
-    const redirectTo = `${origin}${Routes.AUTH_CALLBACK}`;
+    const code = searchParams.get('code');
 
-    // If already session, redirect
-    const {
-        data: { session },
-    } = await supabase.auth.getSession();
-    if (session) {
-        redirect(Routes.AUTH_REDIRECT);
+    if (code) {
+        const supabase = await createClient();
+        const { error, data } = await supabase.auth.exchangeCodeForSession(code);
+        if (!error) {
+            const user = await api.user.upsert({
+                id: data.user.id,
+            });
+
+            if (!user) {
+                console.error(`Failed to create user for id: ${data.user.id}`, { user });
+                return NextResponse.redirect(`${origin}/auth/auth-code-error`);
+            }
+
+            trackEvent({
+                distinctId: data.user.id,
+                event: 'user_signed_in',
+                properties: {
+                    name: data.user.user_metadata.name,
+                    email: data.user.email,
+                    avatar_url: data.user.user_metadata.avatar_url,
+                    $set_once: {
+                        signup_date: new Date().toISOString(),
+                    }
+                }
+            });
+
+            return NextResponse.redirect(`${origin}${Routes.AUTH_REDIRECT}`);
+        }
+        console.error(`Error exchanging code for session: ${error}`);
     }
 
-    // Start OAuth flow
-    // Note: User object will be created in the auth callback route if it doesn't exist
-    const { data, error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-            redirectTo,
-        },
-    });
-
-    if (error) {
-        redirect('/error');
-    }
-
-    redirect(data.url);
-}
-
-export async function devLogin() {
-    if (env.NODE_ENV !== 'development') {
-        throw new Error('Dev login is only available in development mode');
-    }
-
-    const supabase = await createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (session) {
-        redirect(Routes.AUTH_REDIRECT);
-    }
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-        email: SEED_USER.EMAIL,
-        password: SEED_USER.PASSWORD,
-    });
-
-    if (error) {
-        console.error('Error signing in with password:', error);
-        throw new Error(error.message);
-    }
-    redirect(Routes.AUTH_REDIRECT);
+    // return the user to an error page with instructions
+    return NextResponse.redirect(`${origin}/auth/auth-code-error`);
 }
