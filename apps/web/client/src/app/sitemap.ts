@@ -1,7 +1,9 @@
 import type { MetadataRoute } from 'next';
 
-export default function sitemap(): MetadataRoute.Sitemap {
-    const baseUrl = 'https://onlook.com';
+export const dynamic = 'force-static';
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://onlook.com';
 
     return [
         // Main Pages
