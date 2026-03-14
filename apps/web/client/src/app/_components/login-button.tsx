@@ -3,6 +3,7 @@ import { SignInMethod } from '@onlook/models/auth';
 import { Button } from '@onlook/ui/button';
 import { Icons } from '@onlook/ui/icons';
 import { cn } from '@onlook/ui/utils';
+import { unstable_rethrow } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { useAuthContext } from '../auth/auth-context';
@@ -33,6 +34,8 @@ export const LoginButton = ({
         try {
             await handleLogin(method, returnUrl ?? null);
         } catch (error) {
+            // Next.js redirect() бросает NEXT_REDIRECT — unstable_rethrow пробрасывает её для корректного редиректа
+            unstable_rethrow(error);
             console.error(`Error signing in with ${providerName}:`, error);
             toast.error(`Error signing in with ${providerName}`, {
                 description: error instanceof Error ? error.message : 'Please try again.',

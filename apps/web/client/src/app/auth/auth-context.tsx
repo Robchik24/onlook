@@ -3,6 +3,7 @@
 import { LocalForageKeys } from '@/utils/constants';
 import { SignInMethod } from '@onlook/models/auth';
 import localforage from 'localforage';
+import { isRedirectError } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { devLogin, login } from '../login/actions';
@@ -42,6 +43,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             await localforage.setItem(LAST_SIGN_IN_METHOD_KEY, method);
             await login(method);
         } catch (error) {
+            if (isRedirectError(error)) {
+                throw error;
+            }
             console.error('Error signing in with method:', method, error);
             throw error;
         } finally {
@@ -57,6 +61,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
             await devLogin();
         } catch (error) {
+            if (isRedirectError(error)) {
+                throw error;
+            }
             console.error('Error signing in with password:', error);
         } finally {
             setSigningInMethod(null);
