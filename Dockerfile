@@ -59,10 +59,6 @@ RUN SERVER=$(find /app -name "server.js" -path "*standalone*" -type f 2>/dev/nul
 
 EXPOSE 3000
 
-# Healthcheck — bun fetch (start-period 60s даёт время на старт)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD bun -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"
-
 # Standalone server — 0.0.0.0:$PORT (Railway требует)
 # /start-server.sh создаётся на этапе сборки с правильным путём к server.js
 CMD ["/start-server.sh"]
